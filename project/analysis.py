@@ -1,4 +1,3 @@
-
 import os, sys
 import numpy as np
 import pandas as pd
@@ -51,6 +50,8 @@ def run_analysis(results: dict = None) -> dict:
     _plot_equity_curve(results["equity"])
     _plot_drawdown(results["equity"])
     _plot_trade_distribution(results["trades"])
+
+    run_train_test_split(results["df"])
 
     print(f"\n[analysis] Charts saved to: {os.path.abspath(RESULTS_DIR)}/")
     return metrics
@@ -295,6 +296,106 @@ def _plot_relationship_discovery(df: pd.DataFrame) -> None:
 
     plt.tight_layout()
     _save("relationship_discovery.png")
+
+# ── Train / Test Split ────────────────────────────────────────────────────────
+
+SPLIT_DATE = "2020-01-01"
+
+
+def run_train_test_split(df: pd.DataFrame = None) -> None:
+    """Split at SPLIT_DATE, backtest each half, plot equity curves + metrics table."""
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+
+    if df is None:
+        df = load_data()
+        df = add_atr(df)
+        df = add_daily_atr(df)
+        df = compute_signals(df)
+
+    train_df = df[df.index < SPLIT_DATE]
+    test_df  = df[df.index >= SPLIT_DATE]
+
+    print(f"[analysis] Train: {train_df.index[0].date()} → {train_df.index[-1].date()}  "
+          f"({train_df.index.normalize().nunique()} days)")
+    print(f"[analysis] Test : {test_df.index[0].date()} → {test_df.index[-1].date()}  "
+          f"({test_df.index.normalize().nunique()} days)")
+
+    r_train = run_backtest(train_df)
+    r_test  = run_backtest(test_df)
+
+    m_train = compute_metrics(r_train)
+    m_test  = compute_metrics(r_test)
+
+    _print_split_metrics(m_train, m_test)
+    _plot_train_test(r_train["equity"], r_test["equity"], m_train, m_test)
+
+
+def _print_split_metrics(m_train: dict, m_test: dict) -> None:
+    print("\n══ Train / Test Metrics ══════════════════════════════")
+    rows = [
+        ("Annualized return", "ann_return_pct",   "{:+.2f}%"),
+        ("Sharpe ratio",      "sharpe_ratio",      "{:.3f}"),
+        ("Max drawdown",      "max_drawdown_pct",  "{:.2f}%"),
+        ("Win rate",          "win_rate_pct",       "{:.1f}%"),
+        ("Total trades",      "n_trades",           "{:,}"),
+    ]
+    print(f"  {'Metric':<22}  {'Train (2015–2019)':>18}  {'Test (2020–2024)':>18}")
+    print(f"  {'-'*22}  {'-'*18}  {'-'*18}")
+    for label, key, fmt in rows:
+        tv = fmt.format(m_train[key])
+        ev = fmt.format(m_test[key])
+        print(f"  {label:<22}  {tv:>18}  {ev:>18}")
+    print("══════════════════════════════════════════════════════\n")
+
+
+def _plot_train_test(eq_train: pd.Series, eq_test: pd.Series,
+                     m_train: dict, m_test: dict) -> None:
+    _style()
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 7), sharex=False)
+    fig.suptitle("Out-of-Sample Validation — Train vs Test Equity Curves",
+                 fontweight="bold", fontsize=13)
+
+    # ── Train panel ───────────────────────────────────────────────────────────
+    ax1.plot(eq_train.index, eq_train.values, color="#4a90d9", linewidth=1.1)
+    ax1.axhline(0, color="#aaa", linewidth=0.8, linestyle="--")
+    ax1.fill_between(eq_train.index, eq_train.values, 0,
+                     where=(eq_train.values >= 0), alpha=0.15, color="#4a90d9")
+    ax1.fill_between(eq_train.index, eq_train.values, 0,
+                     where=(eq_train.values < 0),  alpha=0.15, color="#e74c3c")
+    ax1.set_title(
+        f"Train  2015–2019  |  Ann. return {m_train['ann_return_pct']:+.2f}%  "
+        f"|  Sharpe {m_train['sharpe_ratio']:.3f}  "
+        f"|  Max DD {m_train['max_drawdown_pct']:.2f}%  "
+        f"|  Win rate {m_train['win_rate_pct']:.1f}%",
+        fontsize=10,
+    )
+    ax1.set_ylabel("Cumulative P&L (pts)")
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    plt.setp(ax1.xaxis.get_majorticklabels(), rotation=20)
+
+    # ── Test panel ────────────────────────────────────────────────────────────
+    ax2.plot(eq_test.index, eq_test.values, color="#2ecc71", linewidth=1.1)
+    ax2.axhline(0, color="#aaa", linewidth=0.8, linestyle="--")
+    ax2.fill_between(eq_test.index, eq_test.values, 0,
+                     where=(eq_test.values >= 0), alpha=0.15, color="#2ecc71")
+    ax2.fill_between(eq_test.index, eq_test.values, 0,
+                     where=(eq_test.values < 0),  alpha=0.15, color="#e74c3c")
+    ax2.set_title(
+        f"Test  2020–2024  |  Ann. return {m_test['ann_return_pct']:+.2f}%  "
+        f"|  Sharpe {m_test['sharpe_ratio']:.3f}  "
+        f"|  Max DD {m_test['max_drawdown_pct']:.2f}%  "
+        f"|  Win rate {m_test['win_rate_pct']:.1f}%",
+        fontsize=10,
+    )
+    ax2.set_ylabel("Cumulative P&L (pts)")
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+    ax2.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    plt.setp(ax2.xaxis.get_majorticklabels(), rotation=20)
+
+    plt.tight_layout()
+    _save("equity_train_test.png")
+
 
 if __name__ == "__main__":
     run_analysis()
