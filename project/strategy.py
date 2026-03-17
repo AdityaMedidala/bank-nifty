@@ -1,22 +1,3 @@
-"""
-strategy.py — VWAP Momentum Breakout
---------------------------------------
-Signal direction: RIDE z-score extremes, not fade them.
-
-Observation from v1–v7: mean-reversion on VWAP deviation gave Sharpe −4.0
-with a smooth downward curve. A smooth −4 Sharpe is a strong signal in the
-wrong direction. Inverting it → momentum breakout → Sharpe +0.528.
-
-Framework (mirrors assignment example):
-    anchor  = expanding mean of intraday Close (session TWAP, no volume needed)
-    spread  = Close − anchor
-    z_score = spread / rolling_std(spread, 12 bars)
-
-    Long  : z ≥ +2.5  AND  Close > EMA(200)   [uptrend breakout continuation]
-    Short : z ≤ −2.5  AND  Close < EMA(200)   [downtrend continuation]
-    Exit  : z crosses zero (momentum exhausted), ATR stop, or EOD close
-"""
-
 import numpy as np
 import pandas as pd
 

@@ -1,18 +1,3 @@
-"""
-analysis.py
------------
-Performance metrics, relationship discovery, and all charts.
-
-Metrics  : Total Return, Annualised Return, Sharpe, Max Drawdown, Win Rate, Avg Duration
-Discovery: ADF stationarity test + ACF on the intraday TWAP spread (Section 2)
-
-Charts saved to results/
-  1. price_and_signals.png      — Close with entry/exit markers
-  2. equity_curve.png           — Cumulative P&L
-  3. drawdown_curve.png         — Distance from equity peak
-  4. trade_distribution.png     — Per-trade net P&L histogram
-  5. relationship_discovery.png — Z-score stationarity & autocorrelation
-"""
 
 import os, sys
 import numpy as np
@@ -120,18 +105,6 @@ def _print_metrics(m: dict) -> None:
 # ── Relationship Discovery ────────────────────────────────────────────────────
 
 def run_relationship_discovery(df: pd.DataFrame) -> dict:
-    """
-    Validate the TWAP spread as a statistically meaningful relationship.
-
-    Spread construction:
-        anchor  = expanding intraday Close mean (session TWAP, β = 1)
-        spread  = Close − anchor
-        z_score = spread / rolling_std(spread, 12 bars)
-
-    Tests:
-        1. ADF test: reject unit root → spread is stationary → mean-reverting anchor
-        2. ACF lag-1: characterises short-term serial correlation structure
-    """
     z_series, sp_series = _compute_spread_series(df)
 
     stats = _run_stationarity_tests(z_series)
@@ -322,7 +295,6 @@ def _plot_relationship_discovery(df: pd.DataFrame) -> None:
 
     plt.tight_layout()
     _save("relationship_discovery.png")
-
 
 if __name__ == "__main__":
     run_analysis()

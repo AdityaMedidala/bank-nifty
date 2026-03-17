@@ -1,18 +1,4 @@
-"""
-data_loader.py
---------------
-Loads and cleans the BankNifty 1-minute OHLC parquet file.
 
-Pipeline
---------
-1. Build parquet from raw CSV if it doesn't exist yet (prepare_parquet)
-2. Load parquet → sorted DatetimeIndex
-3. Filter to NSE market hours (09:15 – 15:30)
-4. Forward-fill missing values within each session (never across days)
-5. Replace extreme outlier bars (|return| > 10%) via ffill
-6. Resample to 5-minute OHLC bars (default)
-7. Add intraday ATR and daily ATR columns
-"""
 
 import os
 import pandas as pd
@@ -22,19 +8,12 @@ CSV_PATH   = os.path.join(os.path.dirname(__file__), "..", "data", "banknifty_ca
 DATA_PATH  = os.path.join(os.path.dirname(__file__), "..", "data", "cleaned_banknifty.parquet")
 MARKET_OPEN  = "09:15"
 MARKET_CLOSE = "15:30"
-OUTLIER_THRESHOLD = 0.10   # 10% single-bar move → data error
+OUTLIER_THRESHOLD = 0.10
 
 
 # ── Parquet preparation (run once from raw CSV) ───────────────────────────────
 
 def prepare_parquet(csv_path: str = CSV_PATH, out_path: str = DATA_PATH) -> None:
-    """
-    Convert the raw CSV into a clean parquet file with a DatetimeIndex.
-    Only runs if the parquet doesn't already exist — safe to call every time.
-
-    Expected CSV columns: Instrument, Date, Time, Open, High, Low, Close
-    Date format: DD-MM-YYYY   Time format: H:MM:SS
-    """
     if os.path.exists(out_path):
         return  # already prepared
 

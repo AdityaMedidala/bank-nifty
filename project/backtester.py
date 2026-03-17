@@ -1,20 +1,3 @@
-"""
-backtester.py
--------------
-Bar-by-bar simulation of the VWAP momentum strategy on BankNifty.
-
-Cost model
-----------
-- Transaction cost : ₹75 round-trip per lot (brokerage + STT + exchange + GST)
-- Slippage         : 2 index points per side (conservative for a liquid index)
-- Lot size         : 15 units (SEBI-revised BankNifty contract, 2024)
-
-Risk model
-----------
-- Stop-loss : 1.5 × daily ATR (~450–900 pts)
-  Daily ATR is used instead of intraday ATR (5–10 pts) because intraday
-  stops fire on microstructure noise before the momentum move develops.
-"""
 
 import numpy as np
 import pandas as pd
